@@ -24,6 +24,10 @@ const BookSchema = mongoose.Schema(
     coverImage: {
       type: String,
     },
+    quantity:{
+      type:Number,
+      default:0
+    }
   },
   { timestamps: true }
 );

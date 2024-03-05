@@ -25,4 +25,4 @@ const borrowerSchema = mongoose.Schema(
 );
 
 const Borrower = mongoose.model("Borrower", borrowerSchema);
-export default Book;
+export default Borrower;
