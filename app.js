@@ -9,14 +9,15 @@ import userRouter from "./route/user.route.js";
 import { rateLimitMiddleware } from "./middleware/ratelimiter.middleware.js";
 import cluster from "cluster";
 import os from "os";
+import cookieParser from "cookie-parser";
 dotenv.config();
 
-if (cluster.isPrimary) {
-  const numCPUs = os.cpus().length;
-  for (let i = 0; i < numCPUs; i++) {
-    cluster.fork();
-  }
-} else {
+// if (cluster.isPrimary) {
+//   const numCPUs = os.cpus().length;
+//   for (let i = 0; i < numCPUs; i++) {
+//     cluster.fork();
+//   }
+// } else {
   const app = express();
   const port = process.env.PORT;
 
@@ -24,6 +25,7 @@ if (cluster.isPrimary) {
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
   app.use(rateLimitMiddleware);
+  app.use(cookieParser());
 
   app.use('/', indexRouter);
   app.use('/book', bookRouter);
@@ -33,12 +35,15 @@ if (cluster.isPrimary) {
     if (err) {
       console.error(err);
     }
+    console.log("Server started!")
   });
   
   mongoose
     .connect(process.env.MONGO_URI)
-    .then(() => {})
+    .then(() => {
+      console.log("Db connected !!")
+    })
     .catch((err) => {
       console.error(err);
     });  
-}
+// }
