@@ -10,23 +10,28 @@ const showAllBook = async (req, res) => {
 const addBook = async (req, res) => {
   const { bookname, author, ISBN, genres, publisher } = req.body;
   try {
-    const book = await Book.create({
-      bookname,
-      author,
-      ISBN,
-      genres,
-      publisher,
-      coverImage: req.file?.path || " ",
-    });
-    res.json(new apiResponse(200, book, "Book Created Sucessfully"));
-  } catch (error) {
-    res.json(
-      new apiResponse(
-        400,
-        {},
-        "Error adding books."
-      )
+    let book = await Book.findOneAndUpdate(
+      { ISBN },
+      { $inc: { quantity: 1 } },
+      { new: true }
     );
+    if (!book) {
+      book = await Book.create({
+        bookname,
+        author,
+        ISBN,
+        genres,
+        publisher,
+        coverImage: req.file?.path || " ",
+        quantity: 1,
+      });
+    }
+
+    res.json(new apiResponse(200, book, "Book created successfully"));
+  } catch (error) {
+    console.error(error);
+    res.json(new apiResponse(500, {}, "Internal server error."));
   }
 };
-export { addBook,showAllBook };
+
+export { addBook, showAllBook };
