@@ -34,7 +34,7 @@ const fineSchema = mongoose.Schema(
             },
             date:{
                 type:String,
-                default: () => new Date().toISOString(),
+                default: () => new Date().toLocaleString('en-US', { timeZone: 'Asia/Kathmandu' })
             }
           }],
           default: [],

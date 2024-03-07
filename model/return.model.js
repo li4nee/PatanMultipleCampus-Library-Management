@@ -12,9 +12,13 @@ const returnSchema = mongoose.Schema(
       ref: "User",
       required: true,
     },
+    transactionToken:{
+      type:String,
+      required:true
+    },
     issuedDate: {
       type: String,
-      default:Date.now()
+      default: () => new Date().toLocaleString('en-US', { timeZone: 'Asia/Kathmandu' })
     }
   },
   { timestamps: true }
