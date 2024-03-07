@@ -4,9 +4,10 @@ import apiResponse from "../utils/apiresponse.js";
 import {
   createAccessToken,
   createRefreshToken,
-  verifyToken
+  verifyToken,
 } from "../utils/jwtToken.utils.js";
 import { safeUser } from "../utils/createSafeUser.js";
+import Borrower from "../model/borrower.model.js";
 
 const loginUser = async (req, res) => {
   try {
@@ -31,8 +32,13 @@ const loginUser = async (req, res) => {
       maxAge: 1 * 60 * 60 * 1000,
       httpOnly: true,
     });
+    delete userWithoutPasswordIDToken.email;
     res.json(
-      new apiResponse(200, {user:userWithoutPasswordIDToken,token:accessToken}, "User Logged In")
+      new apiResponse(
+        200,
+        { user: userWithoutPasswordIDToken, token: accessToken },
+        "User Logged In"
+      )
     );
   } catch (error) {
     res.json(new apiResponse(500, error, "Internal server error"));
@@ -56,16 +62,10 @@ const signupUser = async (req, res) => {
       name,
       faculty,
     });
-     user= await safeUser(user);
-     delete user.email;
+    user = await safeUser(user);
+    delete user.email;
     if (user) {
-      return res.json(
-        new apiResponse(
-          200,
-          user,
-          "User created sucessfully"
-        )
-      );
+      return res.json(new apiResponse(200, user, "User created sucessfully"));
     } else {
       return res.json(new apiResponse(500, {}, "Internal server error"));
     }
@@ -75,16 +75,47 @@ const signupUser = async (req, res) => {
 };
 
 const logoutUser = async (req, res) => {
-  console.log("ok");
-  return res.send("ok");
+  if (req.cookies.token) {
+    res.clearCookie("token");
+  }
 };
 const showUserProfile = async (req, res) => {
   try {
-    return res.json(new apiResponse(200,req.user,"User Profile"));
+    let transactions = await Borrower.find({ userId: req.userId }).populate(
+      "bookId"
+    );
+    let dueTransactions = transactions.filter((element) => element.notReturned);
+    return res.json(
+      new apiResponse(200, { user: req.user, dueTransactions }, "User Profile")
+    );
   } catch (error) {
     console.log(error);
-    return res.status(500).json(new apiResponse(500,error,"Server Error!!"));
+    return res.status(500).json(new apiResponse(500, error, "Server Error!!"));
   }
 };
 
-export { loginUser, signupUser, logoutUser, showUserProfile };
+const seeTransactionDetail = async (req, res) => {
+  try {
+    const transactionToken = req.params.transactionToken;
+    const transactionDetails = await Borrower.findOne({
+      transactionToken,
+    }).populate("bookId");
+    if (!transactionDetails) {
+      return res.json(new apiResponse(404, {}, "Invalid transactionToken!"));
+    }
+    return res.json(new apiResponse(200, transactionDetails, "Success!"));
+  } catch (error) {
+    console.log(error);
+    return res.json(new apiResponse(500, error, "Internal Server Error"));
+  }
+};
+
+
+
+export {
+  loginUser,
+  signupUser,
+  logoutUser,
+  showUserProfile,
+  seeTransactionDetail,
+};

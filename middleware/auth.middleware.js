@@ -3,13 +3,13 @@ import User from "../model/user.model.js";
 import { verifyToken } from "../utils/jwtToken.utils.js";
 import { safeUser } from "../utils/createSafeUser.js";
 const checkTokenMiddleware = async (req, res, next) => {
-  let token = req.headers.authorization || req.cookies.token;
+  let token = req.headers.Authorization || req.cookies.token;
   if (!token) {
     return res.json(
       new apiResponse(
         400,
         {},
-        "Token not found in cookies or Authorization header."
+        "Token not found in cookies or Authorization header. Please login !!"
       )
     );
   }
