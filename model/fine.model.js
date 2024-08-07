@@ -7,41 +7,25 @@ const fineSchema = mongoose.Schema(
       ref: "User",
       required: true,
     },
-    fineAmountForBook: {
-        type: [{
-          bookId: {
-            type: mongoose.Types.ObjectId,
-            ref: 'Book',
-            required: true,
-          },
-          fineAmount: {
-            type: Number,
-            default: 0,
-          },
-        }],
-        default: [],
+    bookId: {
+      type: mongoose.Types.ObjectId,
+      ref: "Book",
+      required: true,
     },
-    finePayedAt:{
-        type: [{
-            bookId: {
-              type: mongoose.Types.ObjectId,
-              ref: 'Book',
-              required: true,
-            },
-            fineAmount: {
-              type: Number,
-              default: 0,
-            },
-            date:{
-                type:String,
-                default: () => new Date().toLocaleString('en-US', { timeZone: 'Asia/Kathmandu' })
-            }
-          }],
-          default: [],
-    }
+    fineAmount: {
+      type: Number,
+      default: 0,
+    },
+    duePayment:{
+      type:Boolean,
+      default:true
+    },
+    payedDate: {
+      type: String,
+    },
   },
   { timestamps: true }
 );
 
-const Fine = mongoose.model("Return", fineSchema);
+const Fine = mongoose.model("Fine", fineSchema);
 export default Fine;

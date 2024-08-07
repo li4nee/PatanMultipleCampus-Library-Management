@@ -2,6 +2,7 @@ import apiResponse from "../utils/apiresponse.js";
 import User from "../model/user.model.js";
 import { verifyToken } from "../utils/jwtToken.utils.js";
 import { safeUser } from "../utils/createSafeUser.js";
+
 const checkTokenMiddleware = async (req, res, next) => {
   let token = req.headers.Authorization || req.cookies.token;
   if (!token) {

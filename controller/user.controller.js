@@ -4,10 +4,10 @@ import apiResponse from "../utils/apiresponse.js";
 import {
   createAccessToken,
   createRefreshToken,
-  verifyToken,
 } from "../utils/jwtToken.utils.js";
 import { safeUser } from "../utils/createSafeUser.js";
 import Borrower from "../model/borrower.model.js";
+import Fine from "../model/fine.model.js";
 
 const loginUser = async (req, res) => {
   try {
@@ -75,10 +75,47 @@ const signupUser = async (req, res) => {
 };
 
 const logoutUser = async (req, res) => {
-  if (req.cookies.token) {
+  try {
+    let token;
+    if (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
+      token = req.headers.authorization.split(" ")[1];
+    } else if (req.cookies.token) {
+
+      token = req.cookies.token;
+    }
+
+    if (!token) {
+      return res.json(new apiResponse(400, {}, "No token provided"));
+    }
+
     res.clearCookie("token");
+
+
+    const newAccessToken = await createAccessToken({ _id: req.userId });
+
+    const user = await User.findOneAndUpdate(
+      { token },
+      { token: newAccessToken },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.json(new apiResponse(404, {}, "User not found"));
+    }
+
+    return res.json(
+      new apiResponse(
+        200,
+        { user: safeUser(user) },
+        "User Logged Out"
+      )
+    );
+  } catch (error) {
+    console.error(error);
+    return res.json(new apiResponse(500, error, "Internal server error"));
   }
 };
+
 const showUserProfile = async (req, res) => {
   try {
     let transactions = await Borrower.find({ userId: req.userId }).populate(
@@ -96,21 +133,48 @@ const showUserProfile = async (req, res) => {
 
 const seeTransactionDetail = async (req, res) => {
   try {
-    const transactionToken = req.params.transactionToken;
-    const transactionDetails = await Borrower.findOne({
-      transactionToken,
-    }).populate("bookId");
-    if (!transactionDetails) {
-      return res.json(new apiResponse(404, {}, "Invalid transactionToken!"));
+    const borrowTransaction = await Borrower.findOne({
+      transactionToken: req.params.transactionToken,
+    });
+
+    if(transactionToken.userId!=req.userId)
+    {
+      return res.json(new apiResponse(400, {}, "Not authorized to see this transaction detail"));
     }
-    return res.json(new apiResponse(200, transactionDetails, "Success!"));
+
+    if (!borrowTransaction) {
+      return res.json(new apiResponse(404, {}, "Transaction not found"));
+    }
+
+    const bookId = borrowTransaction.bookId;
+
+    const fine = await Fine.findOne({
+      userId: borrowTransaction.userId,
+      bookId: bookId,
+    });
+
+    let fineDetails = {
+      fineAmount:  fine.fineAmount, 
+      duePayment:  fine.duePayment ,
+    };
+
+    return res.json(
+      new apiResponse(200, { borrowTransaction, fineDetails }, "Transaction Found !!")
+    );
   } catch (error) {
     console.log(error);
     return res.json(new apiResponse(500, error, "Internal Server Error"));
   }
 };
 
-
+const seeTransactionHistory=async(req,res)=>{
+  let transactions = await Borrower.find({ userId: req.userId }).populate(
+    "bookId"
+  );
+  return res.json(
+    new apiResponse(200, { transactions }, "Success !!")
+  );
+}
 
 export {
   loginUser,
@@ -118,4 +182,5 @@ export {
   logoutUser,
   showUserProfile,
   seeTransactionDetail,
+  seeTransactionHistory
 };

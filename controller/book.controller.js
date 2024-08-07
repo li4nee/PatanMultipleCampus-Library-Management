@@ -6,6 +6,7 @@ import { nanoid } from "nanoid";
 import Return from "../model/return.model.js";
 import dateDifference from "../utils/dateDifference.js";
 import calculateFine from "../utils/calculateFine.js";
+import Fine from "../model/fine.model.js";
 const showAllBook = async (req, res) => {
   const books = await Book.find({});
   return res.json(new apiResponse(200, books, "All the books are obtained"));
@@ -38,8 +39,6 @@ const addBook = async (req, res) => {
   }
 };
 
-
-
 const findBorrowTransaction = async (req, res) => {
   try {
     const borrowTransaction = await Borrower.findOne({
@@ -47,9 +46,18 @@ const findBorrowTransaction = async (req, res) => {
     })
       .populate("userId")
       .populate("bookId");
+
     if (!borrowTransaction) {
       return res.json(new apiResponse(404, {}, "Transaction not found"));
     }
+
+    const fine = await Fine.findOne({
+      userId: borrowTransaction.userId,
+      bookId: borrowTransaction.bookId,
+    });
+
+    borrowTransaction.fine = fine ? fine.fineAmount : null;
+
     return res.json(
       new apiResponse(200, borrowTransaction, "Transaction Found !!")
     );
@@ -58,6 +66,7 @@ const findBorrowTransaction = async (req, res) => {
     return res.json(new apiResponse(500, error, "Internal Server Error"));
   }
 };
+
 
 const borrowBook = async (req, res) => {
   try {
@@ -139,7 +148,7 @@ const returnBook = async (req, res) => {
     }
 
     const sortedBorrowedBooks = borrowedBooks
-      .filter((entry) => entry.notReturned)
+      .filter((entry) => entry.notReturned !== undefined && entry.notReturned)
       .sort((a, b) => b.issuedDate - a.issuedDate);
 
     if (sortedBorrowedBooks.length === 0) {
@@ -149,18 +158,31 @@ const returnBook = async (req, res) => {
     }
 
     const borrowedBook = sortedBorrowedBooks[0];
-
-    borrowedBook.notReturned = false;
-    await borrowedBook.save();
-
     const returnedEntry = await Return.create({
       bookId,
       userId,
       transactionToken: borrowedBook.transactionToken,
     });
 
-    delete returnedEntry.bookId;
-    delete returnedEntry.userId;
+    if (!returnedEntry) {
+      return res.json(
+        new apiResponse(500, {}, "Error creating return entry for the book")
+      );
+    }
+
+    const book = await Book.findById(bookId);
+
+    if (!book) {
+      return res.json(
+        new apiResponse(404, {}, "Book not found to add")
+      );
+    }
+
+    book.quantity += 1;
+    await book.save();
+
+    borrowedBook.notReturned = false;
+    await borrowedBook.save();
 
     const numberOfDaysBorrowed = await dateDifference(
       returnedEntry.issuedDate,
@@ -168,6 +190,13 @@ const returnBook = async (req, res) => {
     );
 
     const fineAmount = await calculateFine(numberOfDaysBorrowed, 30, 2);
+
+    const fineEntry = await Fine.create({
+      userId,
+      bookId,
+      fineAmount,
+      duePayment: fineAmount !== 0, 
+    });
 
     return res.json(
       new apiResponse(
@@ -181,7 +210,6 @@ const returnBook = async (req, res) => {
     return res.json(new apiResponse(500, error.message, "Server error!!"));
   }
 };
-
 
 
 export { addBook, showAllBook, borrowBook, findBorrowTransaction, returnBook };
